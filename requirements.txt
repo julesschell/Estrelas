@@ -1,0 +1,6 @@
+flask
+pymysql
+sqlalchemy
+python-dotenv
+b2sdk
+mysql-connector-python

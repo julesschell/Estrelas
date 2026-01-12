@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>{{ produit or "Bracelet" }} — souvenirs</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#fff; --ink:#0b0c0f; --muted:#6b7280; --card:#f8f9fb; --border:#e5e7eb;
+    --dark:#0f1115; --dark-ink:#f2f3f7; --dark-muted:#b0b2c3; --dark-card:#11121b;
+  }
+  html,body{margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;color:var(--ink);background:var(--bg)}
+  .wrap{max-width:1000px;margin:16px auto;padding:0 14px}
+  .panel{border:1px solid var(--border);border-radius:16px;padding:16px;background:#fff}
+  h1{font-family:"DM Serif Display",serif;letter-spacing:.2px;margin:0 0 4px}
+  .muted{color:var(--muted)}
+
+  .head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+  .btn{appearance:none;border:1px solid #111;background:#111;color:#fff;border-radius:10px;padding:.7rem 1rem;cursor:pointer}
+  .btn.secondary{background:#fff;color:#111;border-color:#ccc}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+
+  [hidden]{display:none !important}
+
+  #souvenir-form-wrapper{
+    font-family:"Red Hat Display",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif !important;
+    background:#fff;padding:1.2rem;border-radius:16px;border:1px solid #eaeaea;
+    box-shadow:0 4px 20px rgba(0,0,0,0.04);max-width:900px;margin:16px auto 0
+  }
+  #souvenir-form-wrapper .souvenir-block{margin-bottom:1.2rem;padding:1.2rem;background:#fdfdfd;border-radius:12px;border:1px solid #e2e2e2}
+  #souvenir-form-wrapper label{display:block;font-weight:600;font-size:.9rem;margin-bottom:.3rem}
+  #souvenir-form-wrapper input[type="text"],#souvenir-form-wrapper textarea{width:100%;margin-bottom:1rem;padding:.7rem;border-radius:8px;border:1px solid #ccc;background:#fff}
+  .custom-file-input{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .file-label{background:#eee;padding:.6rem 1rem;border-radius:6px;display:inline-block;cursor:pointer}
+  .file-name{color:#666;font-size:.9rem}
+  .remove-btn{background:#ff4d4f;color:#fff;border:none;padding:.5rem 1rem;border-radius:6px;cursor:pointer}
+  #add-souvenir-btn{margin-top:.6rem;padding:.8rem 1.2rem;background:#111;color:#fff;border:none;border-radius:8px;cursor:pointer;display:block;margin-left:auto}
+
+  .phone-frame{width:220px;aspect-ratio:9/16;border:2px solid #0e0e0e;border-radius:12px;overflow:hidden;background:#f7f7f7;margin:10px 0}
+  .pz-viewport{position:relative;width:100%;height:100%;overflow:hidden;background:#f7f7f7}
+  .pz-media{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1);transform-origin:center center;user-select:none;max-width:none;max-height:none;display:none}
+  .pz-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px}
+  .pz-zoom{width:280px;height:10px;outline:none}
+  .pz-reset{font-size:.95rem;padding:.5rem .9rem;border:1px solid #c8c8c8;background:#fff;border-radius:8px;cursor:pointer}
+
+  .form-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+  .btn.ghost{background:#fff;border-color:#ccc;color:#111}
+
+  body.dark{background:var(--dark);color:var(--dark-ink)}
+  #albumHost{height:100dvh;border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  #view-tiktok,.vt-root{height:100%}
+  .vt-root{position:relative;overflow:hidden;background:var(--dark-card)}
+  .vt-track{position:absolute;inset:0;transition:transform .42s cubic-bezier(.22,.7,.23,1)}
+  .vt-slide{position:absolute;left:0;width:100vw;height:100dvh;top:0}
+  .vt-slide[data-pos]{top:calc(var(--i) * 100dvh)}
+  .tik-card{width:100vw;height:100dvh;aspect-ratio:9/16;background:var(--dark-card);border:none;border-radius:0;box-shadow:none;overflow:hidden;position:relative}
+  .tik-media{position:absolute;inset:0;overflow:hidden;transform:translateZ(0)}
+  .tik-media img,.tik-media video{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .28s ease;background:#000}
+  .tik-shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.55) 0%, rgba(0,0,0,.2) 35%, transparent 65%)}
+  .tik-cap{position:absolute;left:0;right:0;bottom:0;padding:16px 18px calc(18px + env(safe-area-inset-bottom)) 18px;display:flex;flex-direction:column;gap:6px;opacity:0;transform:translateY(6px);transition:opacity .28s ease,transform .28s ease}
+  .tik-cap h3{font-family:"DM Serif Display",serif;margin:0;font-size:clamp(22px,3vw,32px);font-weight:800;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+  .tik-cap p{margin:0;color:var(--dark-muted);font-size:clamp(13px,1.7vw,15px);line-height:1.35;text-shadow:0 1px 10px rgba(0,0,0,.45)}
+  .vt-dots{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:1px;z-index:3}
+  .vt-dot{appearance:none;border:0;background:transparent;padding:0;margin:0;width:24px;height:24px;cursor:pointer}
+  .vt-dot::before{content:"";display:block;width:6px;height:6px;margin:0 auto;background:#fff;border-radius:999px;box-shadow:0 0 0 1px rgba(0,0,0,.25);transition:height .22s ease,border-radius .22s ease,opacity .22s ease}
+  .vt-dot.active::before{height:28px;border-radius:3px}
+  .tik-slide.ready.active .tik-media img,.tik-slide.ready.active .tik-media video{opacity:1}
+  .tik-slide.ready.active .tik-cap{opacity:1;transform:none}
+  @media (prefers-reduced-motion: reduce){
+    .vt-track,.tik-media img,.tik-media video,.tik-cap{transition:none!important}
+  }
+</style>
+</head>
+
+<body class="dark">
+<div class="wrap">
+  <div class="panel head">
+    <div>
+      <h1>Votre album de souvenirs</h1>
+      <div class="muted" id="stateLine"></div>
+    </div>
+    <div>
+      <button id="btnOpenAlbum" class="btn" hidden>Accéder à mon album</button>
+      <button id="btnOpenForm" class="btn secondary" hidden>Modifier mon album</button>
+    </div>
+  </div>
+
+  <!-- ==== VUE ÉDITION ==== -->
+  <section id="view-edit" hidden>
+    <div id="souvenir-form-wrapper">
+      <div class="souvenir-section">
+        <p><span id="souvenir-count">0</span> / 10 souvenir(s) ajoutés</p>
+
+        <form id="souvenir-form" enctype="multipart/form-data" novalidate>
+          <div id="souvenir-container"></div>
+          <button type="button" id="add-souvenir-btn">➕ Ajouter un souvenir</button>
+        </form>
+
+        <div class="form-actions">
+          <button id="btnLater" class="btn ghost" type="button">🕓 Finir la configuration plus tard</button>
+          <button id="btnGraver" class="btn" type="button">🔒 Graver dans mon bracelet</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==== VUE ALBUM ==== -->
+  <section id="view-album" hidden>
+    <div id="albumHost">
+      <div class="vt-root" id="vtRoot">
+        <div class="vt-track" id="vtTrack"></div>
+        <div class="vt-dots" id="vtDots"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Données serveur -->
+<script id="payload" type="application/json">
+  {{ { "produit": produit, "uuid": uuid, "cards": cards } | tojson }}
+</script>
+<script id="flags" type="application/json">
+  {{ { "locked": locked | default(false), "locked_at": locked_at | default(None) } | tojson }}
+</script>
+
+<script>
+(() => {
+  /* ========= Boot data ========= */
+  function parseJSON(id, fallback){ try{ return JSON.parse(document.getElementById(id).textContent); }catch{ return fallback; } }
+  const PAGE  = parseJSON('payload', { produit:'Souvenirs', uuid:'', cards:[] });
+  const FLAGS = parseJSON('flags',   { locked:false, locked_at:null });
+
+  const LS_KEY_LOCKED = `bracelet:${PAGE.uuid}:locked`;  // fallback visuel immédiat
+  const LS_KEY_DRAFT  = `bracelet:${PAGE.uuid}:draft`;
+
+  /* ========= Views ========= */
+  const stateLine   = document.getElementById('stateLine');
+  const btnOpenAlbum= document.getElementById('btnOpenAlbum');
+  const btnOpenForm = document.getElementById('btnOpenForm');
+  const viewAlbum   = document.getElementById('view-album');
+  const viewEdit    = document.getElementById('view-edit');
+
+  function isLocked(){
+    // Vérité = serveur ; on garde un fallback local juste pour l’instantané avant reload
+    const server = !!FLAGS.locked;
+    const local  = localStorage.getItem(LS_KEY_LOCKED) === '1';
+    return server || local;
+  }
+  function setLockedLocal(){ localStorage.setItem(LS_KEY_LOCKED,'1'); }
+
+  function show(section){
+    viewAlbum.hidden = section !== viewAlbum;
+    viewEdit.hidden  = section !== viewEdit;
+
+    const locked = isLocked();
+    btnOpenAlbum.hidden = !locked || section === viewAlbum;
+    btnOpenForm.hidden  = locked   || section === viewEdit;
+
+    stateLine.textContent = locked
+      ? "Album verrouillé — modification désactivée."
+      : "Complétez votre album puis « Graver dans mon bracelet ».";
+  }
+
+  /* ========= Form (idem ton code) ========= */
+  const container = document.getElementById('souvenir-container');
+  const addBtn    = document.getElementById('add-souvenir-btn');
+  const countLbl  = document.getElementById('souvenir-count');
+  const MAX_ITEMS = 10, MAX_FILE_BYTES = 25*1024*1024;
+
+  function updateCounter(){
+    const n = container.querySelectorAll('.souvenir-block').length;
+    countLbl.textContent = String(n);
+    addBtn.disabled = n>=MAX_ITEMS;
+  }
+
+  function renameFields(){
+    [...container.querySelectorAll('.souvenir-block')].forEach((b,i)=>{
+      const n=i+1;
+      const l=b.querySelectorAll('label.meta');
+      const t=b.querySelector('.titre');
+      const d=b.querySelector('.description');
+      const f=b.querySelector('.fichier');
+      const fl=b.querySelector('.file-label');
+      const cj=b.querySelector('.crop-json');
+
+      if(l[0]) l[0].textContent=`Titre ${n}`;
+      if(l[1]) l[1].textContent=`Description ${n}`;
+      if(l[2]) l[2].textContent=`Fichier ${n}`;
+      if(t){ t.id=`souvenir_title_${n}`; t.name=`titre${n}`; l[0]?.setAttribute('for',t.id); }
+      if(d){ d.id=`souvenir_description_${n}`; d.name=`description${n}`; l[1]?.setAttribute('for',d.id); }
+      if(f){
+        f.id=`souvenir_file_${n}`; f.name=`fichier${n}`;
+        fl?.setAttribute('for', f.id); l[2]?.setAttribute('for', f.id);
+      }
+      if(cj) cj.name=`crop${n}`;
+    });
+    updateCounter();
+  }
+
+  function initPanZoom(block, imgEl, natW, natH){
+    const viewport=block.querySelector('.pz-viewport');
+    const slider  =block.querySelector('.pz-zoom');
+    const hidden  =block.querySelector('.crop-json');
+    const rect=viewport.getBoundingClientRect();
+    const frameW=rect.width||220, frameH=rect.height||Math.round(220*16/9);
+
+    const mediaRatio=natW/natH, frameRatio=frameW/frameH;
+    const base=(mediaRatio>frameRatio)?(frameH/natH):(frameW/natW);
+    const step=0.01, minZ=Math.ceil(base/step)*step, maxZ=minZ*3;
+    const st={s:minZ,x:0,y:0}; const clamp=v=>Math.max(minZ,Math.min(v,maxZ));
+
+    function apply(){
+      imgEl.style.left='50%'; imgEl.style.top='50%';
+      imgEl.style.transformOrigin='center center';
+      imgEl.style.transform=`translate(-50%,-50%) translate(${st.x}px,${st.y}px) scale(${st.s})`;
+      hidden.value = JSON.stringify({type:'image', scale:+st.s.toFixed(2), offset:{x:+st.x.toFixed(1),y:+st.y.toFixed(1)}, frame:{w:frameW,h:frameH}});
+      viewport.dataset.crop = hidden.value;
+    }
+    slider.min=minZ.toFixed(2); slider.max=maxZ.toFixed(2); slider.step=step; slider.value=minZ.toFixed(2);
+    slider.addEventListener('input', ()=>{ st.s=clamp(parseFloat(slider.value)||minZ); slider.value=st.s.toFixed(2); apply(); saveDraft(); });
+
+    block.querySelector('.pz-reset')?.addEventListener('click', ()=>{ st.s=minZ; st.x=0; st.y=0; slider.value=minZ.toFixed(2); apply(); saveDraft(); });
+
+    let drag=false,sx=0,sy=0,ox=0,oy=0;
+    const pt=(ev)=>{const r=viewport.getBoundingClientRect(); const e=ev.touches?ev.touches[0]:ev; return {x:e.clientX-r.left,y:e.clientY-r.top};};
+    const down=(ev)=>{drag=true;const p=pt(ev);sx=p.x;sy=p.y;ox=st.x;oy=st.y;ev.preventDefault();};
+    const move=(ev)=>{if(!drag)return;const p=pt(ev);st.x=ox+(p.x-sx);st.y=oy+(p.y-sy);apply();};
+    const up=()=>{ if(drag){drag=false; saveDraft();} };
+    viewport.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+    viewport.addEventListener('touchstart',down,{passive:false}); window.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+
+    imgEl.style.display='block'; apply();
+    block.__pzCleanup = ()=>{ window.removeEventListener('mousemove',move); window.removeEventListener('mouseup',up); window.removeEventListener('touchmove',move); window.removeEventListener('touchend',up); };
+  }
+
+  function createBlock(){
+    const n = container.querySelectorAll('.souvenir-block').length; if(n>=MAX_ITEMS) return null;
+
+    const block=document.createElement('div'); block.className='souvenir-block';
+    block.innerHTML = `
+      <label class="meta">Titre</label>
+      <input type="text" class="titre" placeholder="Titre (optionnel)">
+      <label class="meta">Description</label>
+      <textarea class="description" rows="2" placeholder="Description (optionnel)"></textarea>
+      <label class="meta">Fichier</label>
+      <div class="custom-file-input">
+        <label class="file-label">📁 Image ou vidéo (≤ 25 Mo)</label>
+        <input type="file" class="fichier" accept="image/*,video/*" style="display:none">
+        <span class="file-name">Aucun fichier</span>
+      </div>
+      <div class="phone-frame">
+        <div class="pz-viewport">
+          <img class="pz-media img" alt="">
+          <video class="pz-media vid" playsinline controls preload="metadata"></video>
+        </div>
+      </div>
+      <div class="pz-controls img-controls" style="display:none">
+        <div class="row"><small>Zoom</small><input type="range" class="pz-zoom" min="1" max="4" step="0.01" value="1"></div>
+        <button type="button" class="pz-reset">Réinitialiser</button>
+      </div>
+      <input type="hidden" class="crop-json" name="crop1" value="">
+      <button type="button" class="remove-btn">❌ Supprimer</button>
+    `;
+    container.appendChild(block);
+
+    const inputFile=block.querySelector('.fichier');
+    const fileBtn  =block.querySelector('.file-label');
+    const fileName =block.querySelector('.file-name');
+    const imgEl    =block.querySelector('img.pz-media.img');
+    const vidEl    =block.querySelector('video.pz-media.vid');
+    const imgCtrls =block.querySelector('.img-controls');
+    const cropJson =block.querySelector('.crop-json');
+    fileBtn.setAttribute('for', inputFile.id || (inputFile.id = `f_${Date.now()}`));
+
+    function coverVideo(v){
+      const viewport=block.querySelector('.pz-viewport');
+      const frameW=viewport.clientWidth||220;
+      const frameH=viewport.clientHeight||Math.round(220*16/9);
+      const vw=v.videoWidth||1, vh=v.videoHeight||1;
+      const r=vw/vh, R=frameW/frameH; const s=(r>R)?(frameH/vh):(frameW/vw);
+      v.style.transform=`translate(-50%,-50%) scale(${s})`; v.style.display='block';
+    }
+
+    inputFile.addEventListener('change', (e)=>{
+      const f=e.target.files?.[0];
+      [imgEl,vidEl].forEach(el=>{if(el){el.src='';el.style.display='none';}});
+      if(block.__pzCleanup){try{block.__pzCleanup();}catch{} block.__pzCleanup=null;}
+      imgCtrls.style.display='none'; cropJson.value='';
+
+      if(!f){ fileName.textContent='Aucun fichier'; saveDraft(); return; }
+      if(f.size>MAX_FILE_BYTES){ alert('Fichier trop volumineux (max 25 Mo)'); e.target.value=''; saveDraft(); return; }
+
+      const url=URL.createObjectURL(f); block.__blobUrl=url;
+      fileName.textContent=f.name;
+
+      if(f.type.startsWith('image/')){
+        vidEl.pause?.(); imgEl.src=url; imgEl.onload=()=>{ imgCtrls.style.display=''; initPanZoom(block,imgEl,imgEl.naturalWidth,imgEl.naturalHeight); saveDraft(); };
+      }else if(f.type.startsWith('video/')){
+        imgEl.style.display='none'; vidEl.src=url; vidEl.muted=false; vidEl.controls=true; vidEl.autoplay=false;
+        vidEl.addEventListener('loadedmetadata',()=>{ coverVideo(vidEl); cropJson.value=JSON.stringify({type:'video', passthrough:true, keepAudio:true}); saveDraft(); },{once:true});
+      }else{
+        alert('Format non supporté'); e.target.value=''; saveDraft(); return;
+      }
+    });
+
+    block.querySelector('.remove-btn').addEventListener('click', ()=>{
+      if(block.__pzCleanup){try{block.__pzCleanup();}catch{}}
+      if(block.__blobUrl){try{URL.revokeObjectURL(block.__blobUrl);}catch{}}
+      block.remove(); renameFields(); saveDraft();
+    });
+
+    block.querySelector('.titre')?.addEventListener('input', saveDraft);
+    block.querySelector('.description')?.addEventListener('input', saveDraft);
+
+    renameFields(); updateCounter(); saveDraft();
+    return block;
+  }
+
+  function saveDraft(){
+    const blocks=[...container.querySelectorAll('.souvenir-block')].map(b=>({
+      titre: b.querySelector('.titre')?.value||'',
+      description: b.querySelector('.description')?.value||'',
+      crop: b.querySelector('.crop-json')?.value||'',
+      fileName: b.querySelector('.file-name')?.textContent||'Aucun fichier'
+    }));
+    localStorage.setItem(LS_KEY_DRAFT, JSON.stringify({blocks}));
+  }
+  function restoreDraft(){
+    const raw=localStorage.getItem(LS_KEY_DRAFT); if(!raw) return;
+    let data; try{data=JSON.parse(raw);}catch{return;}
+    if(!data?.blocks?.length) return;
+    container.innerHTML='';
+    data.blocks.forEach(info=>{
+      const b=createBlock();
+      if(!b) return;
+      if(b.querySelector('.titre')) b.querySelector('.titre').value=info.titre||'';
+      if(b.querySelector('.description')) b.querySelector('.description').value=info.description||'';
+      if(b.querySelector('.crop-json')) b.querySelector('.crop-json').value=info.crop||'';
+      if(b.querySelector('.file-name')) b.querySelector('.file-name').textContent=(info.fileName&&info.fileName!=='Aucun fichier')? info.fileName+' (à re-sélectionner)':'Aucun fichier';
+    });
+  }
+
+  addBtn.addEventListener('click', ()=>{ createBlock(); });
+
+  /* ========= Album ========= */
+  const vtRoot  = document.getElementById('vtRoot');
+  const vtTrack = document.getElementById('vtTrack');
+  const vtDots  = document.getElementById('vtDots');
+  let vtIndex=0, vtBusy=false, SLIDES=[];
+
+  function kindFromMime(m){ if(!m) return "file"; m=m.toLowerCase(); if(m.startsWith("image/")) return "image"; if(m.startsWith("video/")) return "video"; if(m.startsWith("audio/")) return "audio"; return "file"; }
+  function variantsFromSingle(url){ return { src800:url, src1200:url, src1600:url }; }
+  function buildSlidesFromCards(cards){
+    return cards.filter(c=>{ const k=kindFromMime(c.mime); return (k==="image"||k==="video") && c.file_url; })
+                .map(c=>({ kind:kindFromMime(c.mime), title:c.titre||"", desc:c.description||"", src:c.file_url, variants:(c.variants||variantsFromSingle(c.file_url)) }));
+  }
+
+  function ensureImageSources(img){ if(!img) return; if(!img.src) img.src = img.dataset.src||""; if(!img.srcset) img.srcset = img.dataset.srcset||""; if(!img.sizes) img.sizes = img.dataset.sizes||""; }
+  function mediaReady(slide){
+    return new Promise((resolve)=>{
+      const img=slide.querySelector('img'); const vid=slide.querySelector('video');
+      if(img){
+        const done=()=>{ slide.classList.add('ready'); resolve(); };
+        ensureImageSources(img);
+        if(img.complete && img.naturalWidth){ requestAnimationFrame(()=>requestAnimationFrame(done)); }
+        else { const onload=()=>requestAnimationFrame(()=>requestAnimationFrame(done)); img.addEventListener('load', onload, {once:true}); if(img.decode){ img.decode().then(onload).catch(onload); } }
+        return;
+      }
+      if(vid){
+        const done=()=>{ slide.classList.add('ready'); resolve(); };
+        if(!vid.src) vid.src = vid.dataset.src||"";
+        if(vid.readyState>=1){ requestAnimationFrame(()=>requestAnimationFrame(done)); }
+        else { vid.addEventListener('loadedmetadata', ()=>requestAnimationFrame(()=>requestAnimationFrame(done)), {once:true}); }
+        return;
+      }
+      slide.classList.add('ready'); resolve();
+    });
+  }
+
+  function buildTikTok(){
+    SLIDES = buildSlidesFromCards(PAGE.cards || []);
+    vtTrack.textContent=''; vtDots.textContent='';
+
+    if(!SLIDES.length){
+      const empty=document.createElement('div'); empty.style.cssText="display:grid;place-items:center;height:100%;color:#cbd5e1;"; empty.textContent="Aucun média à afficher.";
+      vtTrack.appendChild(empty); return;
+    }
+
+    SLIDES.forEach((it,idx)=>{
+      const slide=document.createElement('section'); slide.className='vt-slide tik-slide'; slide.dataset.pos=idx; slide.style.setProperty('--i',idx);
+      const article=document.createElement('article'); article.className='tik-card';
+      const mediaWrap=document.createElement('div'); mediaWrap.className='tik-media';
+
+      if(it.kind==='image'){
+        const img=document.createElement('img'); if(idx===0) img.setAttribute('fetchpriority','high'); if(idx>1) img.setAttribute('loading','lazy');
+        img.setAttribute('decoding','async'); img.setAttribute('alt', it.title||'');
+        img.dataset.src=it.variants.src1200; img.dataset.srcset=`${it.variants.src800} 800w, ${it.variants.src1200} 1200w, ${it.variants.src1600} 1600w`; img.dataset.sizes='100vw 100dvh';
+        mediaWrap.appendChild(img);
+      } else {
+        const vid=document.createElement('video'); vid.setAttribute('playsinline',''); vid.setAttribute('muted',''); vid.setAttribute('loop',''); vid.setAttribute('preload','metadata'); vid.dataset.src=it.src;
+        vid.addEventListener('pointerdown', ()=>{ if(vid.muted && !window.__vtSoundOn){ vid.muted=false; window.__vtSoundOn=true; vid.play().catch(()=>{}); return; } if(vid.paused) vid.play().catch(()=>{}); else vid.pause(); });
+        mediaWrap.appendChild(vid);
+      }
+
+      const shade=document.createElement('div'); shade.className='tik-shade';
+      const cap=document.createElement('div'); cap.className='tik-cap';
+      const h3=document.createElement('h3'); h3.textContent=it.title||''; const p=document.createElement('p'); p.textContent=it.desc||'';
+      cap.appendChild(h3); cap.appendChild(p);
+
+      article.appendChild(mediaWrap); article.appendChild(shade); article.appendChild(cap);
+      slide.appendChild(article); vtTrack.appendChild(slide);
+    });
+
+    SLIDES.forEach((_,i)=>{ const b=document.createElement('button'); b.className='vt-dot'; b.type='button'; b.addEventListener('click',()=>vtGoto(i)); vtDots.appendChild(b); });
+    vtGoto(0,false);
+  }
+
+  function vtUpdateDots(){ const dots=vtDots.querySelectorAll('.vt-dot'); dots.forEach((d,i)=>d.classList.toggle('active', i===vtIndex)); }
+  function pauseAllVideos(){ vtTrack.querySelectorAll('video').forEach(v=>{ try{v.pause();}catch{} }); }
+  function prepareNeighbors(i){
+    [i,i-1,i+1].forEach(k=>{
+      const s=vtTrack.querySelector(`.vt-slide[data-pos="${k}"]`); if(!s) return;
+      const img=s.querySelector('img'); const vid=s.querySelector('video');
+      if(img) ensureImageSources(img); if(vid && !vid.src) vid.src=vid.dataset.src||""; mediaReady(s);
+    });
+  }
+  async function vtGoto(target, animate=true){
+    if(vtBusy) return;
+    const max=SLIDES.length-1; target=Math.max(0,Math.min(max,Math.round(target))); if(target===vtIndex && animate) return;
+    vtBusy=true;
+    const prev=vtTrack.querySelector('.vt-slide.active'); if(prev) prev.classList.remove('active');
+    const next=vtTrack.querySelector(`.vt-slide[data-pos="${target}"]`); if(next) await mediaReady(next);
+    vtIndex=target; vtTrack.style.transitionDuration = animate?'.42s':'0s'; vtTrack.style.transform=`translate3d(0, ${-target*100}dvh, 0)`; vtUpdateDots();
+    const after=()=>{ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(next) next.classList.add('active'); pauseAllVideos();
+      const vid=next?next.querySelector('video'):null; if(vid){ vid.muted=!window.__vtSoundOn; if(!vid.src) vid.src=vid.dataset.src||""; vid.play().catch(()=>{}); }
+      prepareNeighbors(target); vtBusy=false;
+    })); };
+    if(animate) vtTrack.addEventListener('transitionend', after, {once:true}); else after();
+  }
+  function vtNext(){ if(vtIndex<SLIDES.length-1) vtGoto(vtIndex+1); }
+  function vtPrev(){ if(vtIndex>0) vtGoto(vtIndex-1); }
+  (function attachNav(){
+    vtRoot.addEventListener('wheel', (e)=>{ e.preventDefault(); const dy=(e.deltaMode===1)?e.deltaY*16:(e.deltaMode===2)?e.deltaY*window.innerHeight:e.deltaY; if(Math.abs(dy)<40||vtBusy) return; if(dy>0) vtNext(); else vtPrev(); }, {passive:false});
+    let sy=0, cy=0; vtRoot.addEventListener('touchstart', e=>{const t=e.touches[0]; sy=cy=t.clientY;},{passive:true});
+    vtRoot.addEventListener('touchmove',  e=>{const t=e.touches[0]; cy=t.clientY;},{passive:true});
+    vtRoot.addEventListener('touchend',   ()=>{ const dy=cy-sy; if(Math.abs(dy)<=60) return; if(dy<0) vtNext(); else vtPrev(); },{passive:true});
+    document.addEventListener('keydown', (e)=>{ if(e.key==='ArrowDown'||e.key==='PageDown') vtNext(); if(e.key==='ArrowUp'||e.key==='PageUp') vtPrev(); if(e.code==='Space'){ e.preventDefault(); const s=vtTrack.querySelector(`.vt-slide[data-pos="${vtIndex}"]`); const v=s?s.querySelector('video'):null; if(v){ v.paused? v.play().catch(()=>{}): v.pause(); } }});
+  })();
+
+  /* ========= Finaliser (LOCK) ========= */
+  document.getElementById('btnLater').addEventListener('click', ()=>{
+    saveDraft();
+    alert('Brouillon sauvegardé sur cet appareil. Vous pourrez revenir plus tard via le même lien.');
+  });
+
+  async function finalizeEngrave(){
+    // 1) lock côté serveur (source de vérité)
+    try{
+      await fetch(`/api/bracelets/${encodeURIComponent(PAGE.uuid)}/lock`, { method:'POST' });
+      FLAGS.locked = true;                    // MAJ vue
+      setLockedLocal();                       // fallback immédiat
+      localStorage.removeItem(LS_KEY_DRAFT);  // optionnel: on nettoie le brouillon
+    }catch(e){
+      alert("Erreur pendant la gravure. Réessayez.");
+      return;
+    }
+    // 2) bascule définitive vers l’album
+    show(viewAlbum);
+  }
+
+  document.getElementById('btnGraver').addEventListener('click', ()=>{
+    if(!confirm("Confirmer la gravure ? Après cela, l’album sera verrouillé et le formulaire ne sera plus proposé.")) return;
+    finalizeEngrave();
+  });
+
+  btnOpenAlbum.addEventListener('click', ()=> show(viewAlbum));
+  btnOpenForm .addEventListener('click', ()=> show(viewEdit));
+
+  /* ========= Init ========= */
+  (function init(){
+    if(container.children.length===0) createBlock();
+    restoreDraft();
+    buildTikTok();
+    show(isLocked() ? viewAlbum : viewEdit);
+  })();
+})();
+</script>
+</body>
+</html>

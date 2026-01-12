@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Configurer mon bracelet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#fff; --ink:#0b0c0f; --muted:#6b7280; --card:#f8f9fb; --border:#e5e7eb; --accent:#0b0c0f; }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{max-width:980px;margin:0 auto;padding:16px}
+  h1{font-family:"DM Serif Display",serif;margin:8px 0 4px;letter-spacing:.2px}
+  p.muted{color:var(--muted);margin:.25rem 0 1rem}
+
+  .panel{background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between}
+
+  .btn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:12px;padding:.8rem 1rem;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--accent)}
+  .btn.gray{background:#fff;color:var(--ink);border:1px solid var(--border)}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+
+  /* Form */
+  #souvenir-form-wrapper{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.04);padding:14px;margin-top:14px}
+  #souvenir-container{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:900px){ #souvenir-container{grid-template-columns:1fr} }
+
+  .souvenir-block{border:1px solid #e6e6e6;border-radius:12px;background:#fdfdfd;padding:12px}
+  .souvenir-block label{display:block;font-size:.9rem;font-weight:600;margin:.3rem 0 .25rem}
+  .souvenir-block input[type="text"], .souvenir-block textarea{ width:100%;padding:.65rem;border-radius:8px;border:1px solid #ccc;background:#fff;margin-bottom:.6rem;font:inherit }
+  .custom-file-input{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+  .file-label{background:#eee;padding:.55rem .9rem;border-radius:8px;cursor:pointer}
+  .file-name{font-size:.9rem;color:#666}
+
+  .phone-frame{width:220px;max-width:100%;aspect-ratio:9/16;border:2px solid #0f0f0f;border-radius:12px;background:#f7f7f7;overflow:hidden;margin:8px auto}
+  .pz-viewport{position:relative;width:100%;height:100%;overflow:hidden}
+  .pz-media{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(1);transform-origin:center center;user-select:none;display:none;max-width:none;max-height:none}
+  .pz-controls{display:flex;align-items:center;gap:12px;justify-content:center;margin-top:8px}
+  .pz-zoom{width:260px}
+  .remove-btn{margin-top:8px;background:#ff4d4f;color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;cursor:pointer}
+
+  .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111;color:#fff;padding:.7rem 1rem;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s}
+  .toast.show{opacity:1}
+
+  .busy{opacity:.6;pointer-events:none}
+
+  /* Sticky footer CTA */
+  .sticky-footer{ position: sticky; bottom: 0; z-index: 10; background: var(--bg); border-top:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 0; margin-top:12px; }
+  .sf-left{color:var(--muted);font-size:.95rem}
+
+  /* Modal */
+  .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:1000}
+  .modal.show{display:flex}
+  .modal-backdrop{position:absolute; inset:0; background:rgba(0,0,0,.45)}
+  .modal-card{ position:relative; background:#fff; border-radius:16px; border:1px solid var(--border);
+    max-width:520px; width:calc(100% - 32px); padding:18px; box-shadow:0 20px 50px rgba(0,0,0,.15) }
+  .modal-card h3{margin:.2rem 0 .4rem; font-size:1.25rem}
+  .modal-card p{margin:.4rem 0; color:#374151}
+  .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:12px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div>
+        <h1>Configurer mon bracelet</h1>
+        <p class="muted">Ajoutez jusqu’à 10 souvenirs, chacun composé d'un <strong>titre</strong>, d'une <strong>description</strong> et d'une <strong>photo</strong> ou <strong>vidéo</strong> (max 25&nbsp;Mo), puis <strong>gravez-les à jamais&nbsp;!</strong></p>
+      </div>
+    </div>
+
+    <div id="souvenir-form-wrapper">
+      <form id="souvenir-form" enctype="multipart/form-data" novalidate>
+        <div id="souvenir-container"></div>
+        <div style="display:flex;justify-content:center">
+          <button type="button" id="add-souvenir-btn" class="btn ghost">➕ Ajouter un souvenir</button>
+        </div>
+      </form>
+
+      <div class="sticky-footer">
+        <div class="sf-left"><span id="sf-count">0 / 10 souvenir(s)</span></div>
+        <button type="button" class="btn btn-engrave">🔒 Graver mon bracelet</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Modal de confirmation -->
+  <div id="confirm-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-hidden="true">
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="document">
+      <h3 id="confirm-title">Confirmer la gravure</h3>
+      <p id="confirm-text">Vous avez 0/10 souvenir(s). La gravure est <strong>irréversible</strong>.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn gray" id="cancel-engrave">Annuler</button>
+        <button type="button" class="btn" id="confirm-engrave">🔒 Graver maintenant</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Données injectées par le serveur -->
+  <script id="payload" type="application/json">
+    {{ { "uuid": uuid, "locked": locked | default(false), "product": produit | default("Bracelet") } | tojson }}
+  </script>
+
+  <!-- Pré-crop des images (GLOBAL) -->
+  <script>
+  async function preProcessAllImages() {
+    const blocks = [...document.querySelectorAll('.souvenir-block')];
+
+    for (const block of blocks) {
+      const input = block.querySelector('input.fichier');
+      if (!input || !input.files || !input.files.length) continue;
+
+      const cropEl = block.querySelector('.crop-json');
+      const cropRaw = cropEl ? cropEl.value : '';
+      let meta = null;
+      try { meta = cropRaw ? JSON.parse(cropRaw) : null; } catch {}
+
+      // On ne traite ici que les images (les vidéos restent passthrough)
+      if (!meta || meta.type !== 'image') continue;
+
+      const imgEl = block.querySelector('img.pz-media.img');
+      if (!imgEl) continue;
+
+      const outW = 900;
+      const outH = Math.round(outW * 16 / 9);
+
+      const s = +meta.scale || 1;
+      const offX = +(meta.offset?.x || 0);
+      const offY = +(meta.offset?.y || 0);
+      const frameW = +(meta.frame?.w || 220);
+      const frameH = +(meta.frame?.h || Math.round(220 * 16 / 9));
+
+      const natW = imgEl.naturalWidth || 1;
+      const natH = imgEl.naturalHeight || 1;
+      const drawW = natW * s;
+      const drawH = natH * s;
+      const posX = (frameW / 2 + offX) - drawW / 2;
+      const posY = (frameH / 2 + offY) - drawH / 2;
+      const kf = outW / frameW;
+
+      const dx = Math.round(posX * kf);
+      const dy = Math.round(posY * kf);
+      const dw = Math.max(1, Math.round(drawW * kf));
+      const dh = Math.max(1, Math.round(drawH * kf));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = outW; canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, outW, outH);
+
+      try { await imgEl.decode?.(); } catch {}
+      ctx.drawImage(imgEl, dx, dy, dw, dh);
+
+      const srcFile = input.files[0];
+      const base = (srcFile?.name || 'souvenir').replace(/\.[^.]+$/, '');
+
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+      if (!blob) continue;
+
+      const croppedFile = new File([blob], `${base}-cropped.jpg`, { type: 'image/jpeg' });
+
+      // Remplacement du fichier: DataTransfer (meilleur) sinon fallback (on garde le crop pour serveur)
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(croppedFile);
+        input.files = dt.files;
+        if (cropEl) cropEl.value = ''; // plus besoin des metas, déjà rogné côté client
+      } catch {
+        // Safari ancien: garde le fichier original et les metas -> rognage côté serveur
+      }
+
+      const nameEl = block.querySelector('.file-name');
+      if (nameEl) nameEl.textContent = croppedFile.name;
+    }
+  }
+  // publie explicitement
+  window.preProcessAllImages = preProcessAllImages;
+  </script>
+
+  <!-- App principale -->
+  <script>
+(() => {
+  'use strict';
+
+  /* ====== SSR data ====== */
+  function fromPayload(){
+    try { return JSON.parse(document.getElementById('payload').textContent||'{}'); }
+    catch{ return {}; }
+  }
+  const DATA = fromPayload();
+  const UUID = DATA.uuid || '';
+  if (DATA.locked) {
+    location.replace(`/b/${encodeURIComponent(UUID)}`);
+  }
+
+  /* ====== UI refs ====== */
+  const container = document.getElementById('souvenir-container');
+  const addBtn    = document.getElementById('add-souvenir-btn');
+  const formEl    = document.getElementById('souvenir-form');
+  const toast     = document.getElementById('toast');
+
+  // Modal
+  const modal = document.getElementById('confirm-modal');
+  const confirmBtn = document.getElementById('confirm-engrave');
+  const cancelBtn  = document.getElementById('cancel-engrave');
+  const backdrop   = modal?.querySelector('[data-close]');
+  const confirmText= document.getElementById('confirm-text');
+  let lastFocused = null;
+
+  const MAX_ITEMS = 10;
+  const MAX_FILE_BYTES = 25 * 1024 * 1024;
+  const LS_KEY = `setup:${UUID}:draft:v1`;
+
+  const engraveBtns = () => document.querySelectorAll('.btn-engrave');
+
+  const showToast = (msg, ms=1800) => {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'), ms);
+  };
+
+  function getAddedCount(){
+    return [...document.querySelectorAll('.souvenir-block')].filter(b=>{
+      const f = b.querySelector('.fichier');
+      const hasFile = f && f.files && f.files.length > 0;
+      const t = (b.querySelector('.titre')?.value || '').trim();
+      const d = (b.querySelector('.description')?.value || '').trim();
+      const c = (b.querySelector('.crop-json')?.value || '').trim();
+      return hasFile || t || d || c;
+    }).length;
+  }
+
+  const updateCounter = () => {
+    const nBlocks = container.querySelectorAll('.souvenir-block').length;
+    addBtn.disabled = nBlocks >= MAX_ITEMS;
+    const added = getAddedCount();
+    const sf = document.getElementById('sf-count');
+    if (sf) sf.textContent = `${added} / ${MAX_ITEMS} souvenir(s)`;
+  };
+
+  const renameFields = () => {
+    [...container.querySelectorAll('.souvenir-block')].forEach((b,i)=>{
+      const n=i+1;
+      const l=b.querySelectorAll('label.meta');
+      const t=b.querySelector('.titre');
+      const d=b.querySelector('.description');
+      const f=b.querySelector('.fichier');
+      const fl=b.querySelector('.file-label');
+      const cj=b.querySelector('.crop-json');
+      if(l[0]) l[0].textContent=`Titre ${n}`;
+      if(l[1]) l[1].textContent=`Description ${n}`;
+      if(l[2]) l[2].textContent=`Fichier ${n}`;
+      if(t){ t.id=`souvenir_title_${n}`; t.name=`titre${n}`; l[0]?.setAttribute('for',t.id); }
+      if(d){ d.id=`souvenir_description_${n}`; d.name=`description${n}`; l[1]?.setAttribute('for',d.id); }
+      if(f){ f.id=`souvenir_file_${n}`; f.name=`fichier${n}`; fl?.setAttribute('for', f.id); l[2]?.setAttribute('for', f.id); }
+      if(cj){ cj.name=`crop${n}`; }
+    });
+    updateCounter();
+  };
+
+  /* ====== Pan/Zoom image ====== */
+  function initPanZoom(block, imgEl, natW, natH){
+    const viewport = block.querySelector('.pz-viewport');
+    const slider   = block.querySelector('.pz-zoom');
+    const hidden   = block.querySelector('.crop-json');
+
+    const rect   = viewport.getBoundingClientRect();
+    const frameW = rect.width || 220;
+    const frameH = rect.height || Math.round(220 * 16 / 9);
+
+    const mediaRatio = natW / natH, frameRatio = frameW / frameH;
+    const base = (mediaRatio > frameRatio) ? (frameH / natH) : (frameW / natW);
+
+    const step = 0.01;
+    const underFactor = 0.25;
+    const minZ = Math.max(0.1, +(base * underFactor).toFixed(2));
+    const maxZ = +(base * 3).toFixed(2);
+
+    const st = { s: base, x: 0, y: 0 };
+    const clamp = v => Math.max(minZ, Math.min(v, maxZ));
+
+    function apply(){
+      imgEl.style.left = '50%';
+      imgEl.style.top  = '50%';
+      imgEl.style.transformOrigin = 'center center';
+      imgEl.style.transform = `translate(-50%,-50%) translate(${st.x}px,${st.y}px) scale(${st.s})`;
+
+      if (hidden) {
+        hidden.value = JSON.stringify({
+          type: 'image',
+          scale: +st.s.toFixed(2),
+          offset: { x: +st.x.toFixed(1), y: +st.y.toFixed(1) },
+          frame: { w: frameW, h: frameH }
+        });
+      }
+    }
+
+    slider.min = minZ.toFixed(2);
+    slider.max = maxZ.toFixed(2);
+    slider.step = step;
+    slider.value = st.s.toFixed(2);
+
+    slider.addEventListener('input', () => {
+      st.s = clamp(parseFloat(slider.value) || base);
+      slider.value = st.s.toFixed(2);
+      apply(); snapshot();
+    });
+
+    block.querySelector('.pz-reset')?.addEventListener('click', () => {
+      st.s = base; st.x = 0; st.y = 0;
+      slider.value = st.s.toFixed(2);
+      apply(); snapshot();
+    });
+
+    // Drag
+    let drag = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    const pt = (ev) => {
+      const r = viewport.getBoundingClientRect();
+      const e = ev.touches ? ev.touches[0] : ev;
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const down = (ev) => { drag = true; const p = pt(ev); sx = p.x; sy = p.y; ox = st.x; oy = st.y; ev.preventDefault(); };
+    const move = (ev) => { if(!drag) return; const p = pt(ev); st.x = ox + (p.x - sx); st.y = oy + (p.y - sy); apply(); };
+    const up   = () => { if(drag){ drag = false; snapshot(); } };
+
+    viewport.addEventListener('mousedown', down);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    viewport.addEventListener('touchstart', down, { passive: false });
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('touchend', up);
+
+    // Wheel zoom
+    const onWheel = (e) => {
+      e.preventDefault();
+      const before = st.s;
+      const factor = (e.deltaY > 0) ? 0.95 : 1.05;
+      st.s = clamp(st.s * factor);
+      slider.value = st.s.toFixed(2);
+
+      const r = viewport.getBoundingClientRect();
+      const cx = e.clientX - r.left - r.width / 2;
+      const cy = e.clientY - r.top  - r.height / 2;
+      const k = st.s / before;
+      st.x = cx - (cx - st.x) * k;
+      st.y = cy - (cy - st.y) * k;
+
+      apply(); snapshot();
+    };
+    viewport.addEventListener('wheel', onWheel, { passive: false });
+
+    imgEl.style.display = 'block';
+    apply();
+
+    block.__pzCleanup = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      window.removeEventListener('touchmove', move);
+      window.removeEventListener('touchend', up);
+      viewport.removeEventListener('mousedown', down);
+      viewport.removeEventListener('touchstart', down);
+      viewport.removeEventListener('wheel', onWheel);
+    };
+  }
+
+  function coverVideo(block, v){
+    const viewport=block.querySelector('.pz-viewport');
+    const frameW=viewport.clientWidth||220;
+    const frameH=viewport.clientHeight||Math.round(220*16/9);
+    const vw=v.videoWidth||1, vh=v.videoHeight||1;
+    const r=vw/vh, R=frameW/frameH; const s=(r>R)?(frameH/vh):(frameW/vw);
+    v.style.transform=`translate(-50%,-50%) scale(${s})`; v.style.display='block';
+  }
+
+  function createBlock(){
+    const n=container.querySelectorAll('.souvenir-block').length;
+    if(n>=MAX_ITEMS) return null;
+
+    const block=document.createElement('div'); block.className='souvenir-block';
+    block.innerHTML=`
+      <label class="meta">Titre</label>
+      <input type="text" class="titre" placeholder="Titre (optionnel)" />
+      <label class="meta">Description</label>
+      <textarea class="description" rows="2" placeholder="Description (optionnel)"></textarea>
+      <label class="meta">Fichier</label>
+      <div class="custom-file-input">
+        <label class="file-label">📁 Image ou vidéo (≤ 25 Mo)</label>
+        <input type="file" class="fichier" accept="image/*,video/*" style="display:none" />
+        <span class="file-name">Aucun fichier</span>
+      </div>
+
+      <div class="phone-frame">
+        <div class="pz-viewport">
+          <img class="pz-media img" alt="">
+          <video class="pz-media vid" playsinline controls preload="metadata"></video>
+        </div>
+      </div>
+
+      <div class="pz-controls img-controls" style="display:none">
+        <div class="row"><small>Zoom</small> <input type="range" class="pz-zoom" min="1" max="4" step="0.01" value="1"></div>
+        <button type="button" class="pz-reset">Réinitialiser</button>
+      </div>
+
+      <input type="hidden" class="crop-json" name="crop1" value="" />
+      <button type="button" class="remove-btn">❌ Supprimer</button>
+    `;
+    container.appendChild(block);
+
+    const inputFile=block.querySelector('.fichier');
+    const fileBtn  =block.querySelector('.file-label');
+    const fileName =block.querySelector('.file-name');
+    const imgEl    =block.querySelector('img.pz-media.img');
+    const vidEl    =block.querySelector('video.pz-media.vid');
+    const imgCtrls =block.querySelector('.img-controls');
+    const cropJson =block.querySelector('.crop-json');
+
+    fileBtn.setAttribute('for', inputFile.id || (inputFile.id = `f_${Date.now()}`));
+
+    inputFile.addEventListener('change', (e)=>{
+      const f=e.target.files?.[0];
+      [imgEl,vidEl].forEach(el=>{if(el){el.src='';el.style.display='none';}});
+      if(block.__pzCleanup){try{block.__pzCleanup();}catch{} block.__pzCleanup=null;}
+      imgCtrls.style.display='none'; if (cropJson) cropJson.value='';
+
+      if(!f){ fileName.textContent='Aucun fichier'; snapshot(); updateCounter(); return; }
+      if(f.size>MAX_FILE_BYTES){ alert('Fichier trop volumineux (max 25 Mo)'); e.target.value=''; snapshot(); updateCounter(); return; }
+
+      const url=URL.createObjectURL(f); block.__blobUrl=url;
+      fileName.textContent=f.name;
+
+      if(f.type.startsWith('image/')){
+        vidEl.pause?.(); imgEl.src=url;
+        imgEl.onload=()=>{ imgCtrls.style.display=''; initPanZoom(block,imgEl,imgEl.naturalWidth,imgEl.naturalHeight); snapshot(); updateCounter(); };
+      } else if(f.type.startsWith('video/')){
+        imgEl.style.display='none'; vidEl.src=url; vidEl.muted=false; vidEl.controls=true; vidEl.autoplay=false;
+        vidEl.addEventListener('loadedmetadata',()=>{
+          coverVideo(block,vidEl);
+          const cj = block.querySelector('.crop-json');
+          if (cj) {
+            cj.value = JSON.stringify({type:'video', passthrough:true, keepAudio:true});
+          }
+          snapshot(); updateCounter();
+        },{once:true});
+      } else {
+        alert('Format non supporté'); e.target.value=''; snapshot(); updateCounter(); return;
+      }
+    });
+
+    block.querySelector('.remove-btn').addEventListener('click', ()=>{
+      if(block.__pzCleanup){try{block.__pzCleanup();}catch{}}
+      if(block.__blobUrl){try{URL.revokeObjectURL(block.__blobUrl);}catch{}}
+      block.remove(); renameFields(); snapshot(); updateCounter();
+    });
+
+    block.querySelector('.titre')?.addEventListener('input', ()=>{ snapshot(); updateCounter(); });
+    block.querySelector('.description')?.addEventListener('input', ()=>{ snapshot(); updateCounter(); });
+
+    renameFields(); updateCounter(); snapshot();
+    return block;
+  }
+
+  /* ====== Draft local ====== */
+  function snapshot(){
+    const blocks=[...container.querySelectorAll('.souvenir-block')].map(b=>({
+      titre: b.querySelector('.titre')?.value||'',
+      description: b.querySelector('.description')?.value||'',
+      crop: b.querySelector('.crop-json')?.value||'',
+      fileName: b.querySelector('.file-name')?.textContent||'Aucun fichier'
+    }));
+    localStorage.setItem(LS_KEY, JSON.stringify({blocks}));
+  }
+  function restore(){
+    const raw=localStorage.getItem(LS_KEY); if(!raw) return;
+    let data; try{data=JSON.parse(raw);}catch{return;}
+    if(!data?.blocks?.length) return;
+    container.innerHTML='';
+    data.blocks.forEach(info=>{
+      const b=createBlock();
+      if(!b) return;
+      b.querySelector('.titre').value = info.titre || '';
+      b.querySelector('.description').value = info.description || '';
+      b.querySelector('.crop-json').value = info.crop || '';
+      b.querySelector('.file-name').textContent =
+        (info.fileName && info.fileName!=='Aucun fichier') ? info.fileName+' (à re-sélectionner)' : 'Aucun fichier';
+    });
+    updateCounter();
+  }
+  window.addEventListener('beforeunload', snapshot, {capture:true});
+
+  /* ====== Submit ====== */
+  function setBusy(v){
+    document.body.classList.toggle('busy', !!v);
+    engraveBtns().forEach(b => b.disabled = !!v);
+    addBtn.disabled = !!v || container.querySelectorAll('.souvenir-block').length>=MAX_ITEMS;
+    formEl.querySelectorAll('button, input, textarea').forEach(el=>{
+      if (el.classList.contains('remove-btn')) return;
+      el.disabled = !!v;
+    });
+  }
+
+  async function onEngrave(){
+    const hasFile = [...formEl.querySelectorAll('input.fichier')].some(i=>i.files && i.files.length>0);
+    if(!hasFile){ alert("Ajoute au moins un fichier pour graver ton bracelet."); return; }
+
+    try{
+      setBusy(true);
+      showToast("Préparation des médias…");
+      try { await window.preProcessAllImages?.(); } catch (e) { console.warn('preProcessAllImages a échoué → on continue', e); }
+
+      const fd = new FormData();
+      let idx=0;
+      for(const b of formEl.querySelectorAll('.souvenir-block')){
+        const t=b.querySelector('.titre')?.value?.trim()||'';
+        const d=b.querySelector('.description')?.value?.trim()||'';
+        const c=b.querySelector('.crop-json')?.value||'';
+        const f=b.querySelector('.fichier');
+
+        if((t||d||c) || (f && f.files && f.files.length)){
+          idx++;
+          if(t) fd.append(`titre${idx}`, t);
+          if(d) fd.append(`description${idx}`, d);
+          if(c) fd.append(`crop${idx}`, c);
+          if(f && f.files && f.files.length) fd.append(`fichier${idx}`, f.files[0]);
+        }
+      }
+      fd.append('count', String(idx));
+
+      showToast("Gravure en cours…");
+      const res = await fetch(`/api/bracelets/${encodeURIComponent(UUID)}/engrave`, { method: 'POST', body: fd });
+      const json = await res.json().catch(()=>({}));
+      if(!res.ok || json.ok===false){
+        throw new Error(json.error || `Erreur ${res.status}`);
+      }
+
+      localStorage.removeItem(LS_KEY);
+      showToast("Gravure réussie !");
+      const redirect = json.redirect || `/b/${encodeURIComponent(UUID)}`;
+      location.replace(redirect);
+    }catch(e){
+      console.error(e);
+      alert("Une erreur est survenue pendant la gravure. Réessaie.");
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  /* ====== Modal ====== */
+  function openConfirmModal(){
+    if(!modal) return;
+    lastFocused = document.activeElement;
+    const added = getAddedCount();
+    confirmText.innerHTML = `Vous avez <strong>${added}</strong> / ${MAX_ITEMS} souvenir(s).<br>La gravure est <strong>irréversible</strong>.`;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden','false');
+    confirmBtn?.focus();
+    document.addEventListener('keydown', onEscClose, { once: true });
+  }
+  function closeConfirmModal(){
+    if(!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden','true');
+    if (lastFocused && lastFocused.focus) lastFocused.focus();
+  }
+  function onEscClose(e){ if(e.key === 'Escape') closeConfirmModal(); }
+
+  confirmBtn?.addEventListener('click', async ()=>{
+    closeConfirmModal();
+    await onEngrave();
+  });
+  cancelBtn?.addEventListener('click', closeConfirmModal);
+  backdrop?.addEventListener('click', closeConfirmModal);
+
+  /* ====== Boot ====== */
+  function init(){
+    restore();
+    addBtn.addEventListener('click', ()=>{ createBlock(); });
+    engraveBtns().forEach(b => b.addEventListener('click', openConfirmModal));
+    updateCounter();
+  }
+  init();
+})();
+  </script>
+</body>
+</html>

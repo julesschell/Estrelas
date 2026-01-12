@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Souvenirs — TikTok (vertical)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000; --card:#11121b; --ink:#f2f3f7; --muted:#b0b2c3;
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;
+    overflow:hidden;
+  }
+
+  .wrap{height:100dvh;max-width:1000px;margin:0 auto;padding:0;box-sizing:border-box;position:relative}
+  #host{height:100%}
+
+  /* Accélération GPU là où ça bouge */
+  .tik-media img,
+  .tik-media video,
+  .vt-track {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* TikTok Vertical – ZERO FLASH */
+  #view-tiktok,
+  .vt-root{ height:100dvh; }
+  .vt-root{ position:relative; overflow:hidden; }
+  .vt-track{ position:absolute; inset:0; transition: transform .42s cubic-bezier(.22,.7,.23,1); }
+  .vt-slide{ position:absolute; left:0; width:100vw; height:100dvh; top:0; }
+  .vt-slide[data-pos]{ top: calc(var(--i) * 100dvh); }
+
+  .tik-slide{ display:flex; justify-content:center; align-items:center }
+  .tik-card{
+    width:100vw; height:100dvh; aspect-ratio: 9 / 16;
+    background:var(--card); border:none; border-radius:0; box-shadow:none; overflow:hidden; position:relative;
+  }
+  .tik-media{ position:absolute; inset:0; overflow:hidden; transform:translateZ(0) }
+
+  .tik-media img,
+  .tik-media video{
+    width:100%; height:100%; object-fit:cover; display:block;
+    opacity:0; transition:opacity .28s ease;
+  }
+
+  .tik-media video{ background:#000; }
+
+  .tik-shade{ position:absolute; inset:0; background: linear-gradient(to top, rgba(0,0,0,.55) 0%, rgba(0,0,0,.2) 35%, transparent 65%); pointer-events:none }
+
+  .tik-cap{
+    position:absolute; left:0; right:0; bottom:0;
+    padding:16px 18px calc(18px + env(safe-area-inset-bottom)) 18px;
+    display:flex; flex-direction:column; gap:6px;
+    opacity:0; transform: translateY(6px);
+    transition: opacity .28s ease, transform .28s ease;
+  }
+  .tik-cap h3{font-family: 'DM Serif Display', serif; margin:0; font-size:clamp(22px,3vw,32px); font-weight:800; letter-spacing:.2px; text-shadow:0 2px 12px rgba(0,0,0,.5) }
+  .tik-cap p{ margin:0; color:var(--muted); font-size:clamp(13px,1.7vw,15px); line-height:1.35; text-shadow:0 1px 10px rgba(0,0,0,.45) }
+
+  /* ZERO FLASH: n’afficher que quand la slide est prête ET active */
+  .tik-slide .tik-media img,
+  .tik-slide .tik-media video { opacity:0 }
+  .tik-slide .tik-cap{opacity:0; transform: translateY(6px)}
+  .tik-slide.ready.active .tik-media img,
+  .tik-slide.ready.active .tik-media video { opacity:1 }
+  .tik-slide.ready.active .tik-cap{opacity:1; transform:none}
+
+  /* Dots à droite : pastilles blanches + pilule pour l’actif */
+  .vt-dots{
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    display:flex; flex-direction:column; gap:1px; z-index:3; pointer-events:auto;
+  }
+  .vt-dot{
+    appearance:none; border:0; background:transparent; padding:0; margin:0;
+    width:24px; height:24px; cursor:pointer;
+  }
+  .vt-dot::before{
+    content:"";
+    display:block;
+    width:6px; height:6px; margin:0 auto;
+    background:#fff; border-radius:999px;
+    box-shadow:0 0 0 1px rgba(0,0,0,.25);
+    transition:height .22s ease, border-radius .22s ease, opacity .22s ease;
+  }
+  .vt-dot.active::before{ height:28px; border-radius:3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vt-track { transition: none !important; }
+    .tik-media img, .tik-media video,
+    .tik-cap { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="host">
+      <!-- TikTok only -->
+      <div id="view-tiktok">
+        <div class="vt-root" id="vtRoot">
+          <div class="vt-track" id="vtTrack"></div>
+          <div class="vt-dots" id="vtDots"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payload SSR (Jinja) -->
+  <script id="payload" type="application/json">
+    {{ { "produit": produit, "uuid": uuid, "cards": cards } | tojson }}
+  </script>
+
+<script>
+/* ==== Helpers & Données (SSR) ==== */
+function kindFromMime(m){
+  if(!m) return "file";
+  m=m.toLowerCase();
+  if(m.startsWith("image/")) return "image";
+  if(m.startsWith("video/")) return "video";
+  if(m.startsWith("audio/")) return "audio";
+  return "file";
+}
+function variantsFromSingle(url){ return { src800:url, src1200:url, src1600:url }; }
+
+let PAGE = { produit:"Souvenirs", uuid:"", cards:[] };
+let SLIDES = [];
+
+/* Préférence SON globale (false au départ ; 1er tap l’active) */
+window.__vtSoundOn = false;
+
+(function fromSSR(){
+  const el = document.getElementById('payload');
+  if (!el) { console.warn("Pas de payload SSR"); return; }
+  try {
+    const data = JSON.parse(el.textContent);
+    PAGE.produit = data.produit || "Souvenirs";
+    PAGE.uuid    = data.uuid || "";
+    PAGE.cards   = Array.isArray(data.cards) ? data.cards : [];
+
+    SLIDES = PAGE.cards
+      .filter(c => {
+        const k = kindFromMime(c.mime);
+        return (k === "image" || k === "video") && c.file_url;
+      })
+      .map(c => {
+        const k = kindFromMime(c.mime);
+        const v = c.variants || variantsFromSingle(c.file_url);
+        return {
+          kind: k,
+          title: c.titre || "",
+          desc:  c.description || "",
+          src:   c.file_url,
+          variants: {
+            src800:  v.src800  || c.file_url,
+            src1200: v.src1200 || c.file_url,
+            src1600: v.src1600 || c.file_url
+          }
+        };
+      });
+
+    if (PAGE.produit) document.title = `${PAGE.produit} — souvenirs`;
+  } catch(e){
+    console.error("Payload SSR invalide:", e);
+    PAGE.cards = []; SLIDES = [];
+  }
+})();
+
+/* ==== Préparation "prêt à afficher" (image + vidéo) ==== */
+function ensureImageSources(img){
+  if (!img) return;
+  if (!img.src)      img.src     = img.dataset.src || "";
+  if (!img.srcset)   img.srcset  = img.dataset.srcset || "";
+  if (!img.sizes)    img.sizes   = img.dataset.sizes || "";
+}
+async function mediaReady(slide){
+  return new Promise((resolve)=>{
+    const img = slide.querySelector('img');
+    const vid = slide.querySelector('video');
+
+    // IMAGE
+    if (img){
+      const done = ()=>{ slide.classList.add('ready'); resolve(); };
+      ensureImageSources(img);
+      if (img.complete && img.naturalWidth){
+        requestAnimationFrame(()=>requestAnimationFrame(done));
+        return;
+      }
+      const onload = ()=>{ requestAnimationFrame(()=>requestAnimationFrame(done)); };
+      img.addEventListener('load', onload, {once:true});
+      if (img.decode) { img.decode().then(onload).catch(onload); }
+      return;
+    }
+
+    // VIDEO
+    if (vid){
+      const mark = ()=>{ slide.classList.add('ready'); resolve(); };
+      if (!vid.src) vid.src = vid.dataset.src || "";
+      if (vid.readyState >= 1) {
+        requestAnimationFrame(()=>requestAnimationFrame(mark));
+      } else {
+        vid.addEventListener('loadedmetadata', ()=> {
+          requestAnimationFrame(()=>requestAnimationFrame(mark));
+        }, {once:true});
+      }
+      return;
+    }
+
+    slide.classList.add('ready'); resolve();
+  });
+}
+
+/* ==== TikTok maison (vertical swipe) ==== */
+const vtRoot  = document.getElementById('vtRoot');
+const vtTrack = document.getElementById('vtTrack');
+const vtDotsWrap = document.getElementById('vtDots');
+let vtIndex = 0;
+let vtBusy  = false;
+
+function buildTikTokSlides(){
+  vtTrack.textContent = '';
+  if (!SLIDES.length){
+    const empty = document.createElement('div');
+    empty.style.cssText = "display:grid;place-items:center;height:100%;color:#cbd5e1;";
+    empty.textContent = "Aucun média à afficher.";
+    vtTrack.appendChild(empty);
+    return;
+  }
+
+  SLIDES.forEach((it,idx)=>{
+    const slide = document.createElement('section');
+    slide.className = 'vt-slide tik-slide';
+    slide.dataset.pos = idx;
+    slide.style.setProperty('--i', idx);
+
+    const article = document.createElement('article');
+    article.className = 'tik-card';
+
+    const mediaWrap = document.createElement('div');
+    mediaWrap.className = 'tik-media';
+
+    if (it.kind === 'image'){
+      const img = document.createElement('img');
+      if (idx===0) img.setAttribute('fetchpriority','high');
+      if (idx>1)   img.setAttribute('loading','lazy');
+      img.setAttribute('decoding','async');
+      img.setAttribute('alt', it.title || '');
+      img.dataset.src = it.variants.src1200;
+      img.dataset.srcset = `${it.variants.src800} 800w, ${it.variants.src1200} 1200w, ${it.variants.src1600} 1600w`;
+      img.dataset.sizes  = '100vw 100dvh';
+      mediaWrap.appendChild(img);
+    } else {
+      const vid = document.createElement('video');
+      vid.setAttribute('playsinline','');
+      vid.setAttribute('muted','');              // autoplay autorisé
+      vid.setAttribute('loop','');
+      vid.setAttribute('preload','metadata');
+      vid.dataset.src = it.src;
+
+      // Tap = 1er tap -> activer son global + continuer à jouer ; suivants -> pause/reprise
+      vid.addEventListener('pointerdown', () => {
+        if (vid.muted && !window.__vtSoundOn) {
+          vid.muted = false;
+          window.__vtSoundOn = true;             // mémorise pour toutes les slides
+          vid.play().catch(()=>{});
+          return;
+        }
+        if (vid.paused) vid.play().catch(()=>{}); else vid.pause();
+      });
+
+      mediaWrap.appendChild(vid);
+    }
+
+    const shade = document.createElement('div');
+    shade.className = 'tik-shade';
+
+    const cap = document.createElement('div');
+    cap.className = 'tik-cap';
+    const h3 = document.createElement('h3'); h3.textContent = it.title || '';
+    const p  = document.createElement('p');  p.textContent  = it.desc  || '';
+    cap.appendChild(h3); cap.appendChild(p);
+
+    article.appendChild(mediaWrap);
+    article.appendChild(shade);
+    article.appendChild(cap);
+    slide.appendChild(article);
+    vtTrack.appendChild(slide);
+  });
+
+  vtBuildDots();
+  vtGoto(0, false);
+}
+
+function vtBuildDots(){
+  vtDotsWrap.textContent = '';
+  SLIDES.forEach((_,i)=>{
+    const dot=document.createElement('button');
+    dot.className='vt-dot';
+    dot.type='button';
+    dot.setAttribute('aria-label',`Aller à ${i+1}`);
+    dot.addEventListener('click', ()=> vtGoto(i));
+    vtDotsWrap.appendChild(dot);
+  });
+  vtUpdateDots();
+}
+function vtUpdateDots(){
+  const dots = vtDotsWrap.querySelectorAll('.vt-dot');
+  dots.forEach((d,i)=>d.classList.toggle('active', i===vtIndex));
+}
+
+function pauseAllVideos(){
+  vtTrack.querySelectorAll('video').forEach(v=>{
+    try { v.pause(); } catch(_) {}
+  });
+}
+function prepareNeighbors(i){
+  [i, i-1, i+1].forEach(k=>{
+    const slide = vtTrack.querySelector(`.vt-slide[data-pos="${k}"]`);
+    if (!slide) return;
+    const img = slide.querySelector('img');
+    const vid = slide.querySelector('video');
+    if (img) ensureImageSources(img);
+    if (vid && !vid.src) vid.src = vid.dataset.src || "";
+    mediaReady(slide);
+  });
+}
+
+async function vtGoto(target, animate=true){
+  if (vtBusy) return;
+  const max = SLIDES.length - 1;
+  target = Math.max(0, Math.min(max, Math.round(target)));
+  if (target === vtIndex && animate) return;
+
+  vtBusy = true;
+
+  const prevActive = vtTrack.querySelector('.vt-slide.active');
+  if (prevActive) prevActive.classList.remove('active');
+
+  const nextSlide = vtTrack.querySelector(`.vt-slide[data-pos="${target}"]`);
+  if (nextSlide) await mediaReady(nextSlide);
+
+  vtIndex = target;
+  vtTrack.style.transitionDuration = animate ? '.42s' : '0s';
+  vtTrack.style.transform = `translate3d(0, ${-target*100}dvh, 0)`;
+  vtUpdateDots();
+
+  const afterPaint = ()=>{
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if (nextSlide) nextSlide.classList.add('active');
+
+      pauseAllVideos();
+
+      const vid = nextSlide ? nextSlide.querySelector('video') : null;
+      if (vid) {
+        // Applique la préférence SON globale
+        vid.muted = !window.__vtSoundOn;
+
+        if (!vid.src) vid.src = vid.dataset.src || "";
+        // Autoplay muet autorisé ; si son déjà activé, certains navigateurs peuvent
+        // bloquer cette lecture auto -> on tente et on ignore l'erreur.
+        vid.play().catch(()=>{});
+      }
+
+      prepareNeighbors(target);
+      vtBusy = false;
+    }));
+  };
+  if (animate) vtTrack.addEventListener('transitionend', afterPaint, {once:true});
+  else afterPaint();
+}
+
+function vtNext(){ if (vtIndex < SLIDES.length-1) vtGoto(vtIndex+1); }
+function vtPrev(){ if (vtIndex > 0) vtGoto(vtIndex-1); }
+
+/* Interactions: molette / touch / clavier */
+(function attachWheel(){
+  let acc=0, lastT=0;
+  const THRESH=160, DECAY=260;
+  vtRoot.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    const now=performance.now();
+    if(now-lastT>DECAY) acc=0; lastT=now;
+    const dy = (e.deltaMode===1)?e.deltaY*16:(e.deltaMode===2)?e.deltaY*window.innerHeight:e.deltaY;
+    acc += dy;
+    if (Math.abs(acc) < THRESH || vtBusy) return;
+    if (acc>0) vtNext(); else vtPrev();
+    acc=0;
+  }, {passive:false});
+})();
+
+(function attachTouch(){
+  let sy=0, cy=0; const THRESH=60;
+  vtRoot.addEventListener('touchstart', (e)=>{ const t=e.touches[0]; sy=cy=t.clientY; }, {passive:true});
+  vtRoot.addEventListener('touchmove',  (e)=>{ const t=e.touches[0]; cy=t.clientY; }, {passive:true});
+  vtRoot.addEventListener('touchend',   ()=>{
+    const dy=cy-sy; if(Math.abs(dy)<=THRESH) return;
+    if (dy<0) vtNext(); else vtPrev();
+  }, {passive:true});
+})();
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='ArrowDown' || e.key==='PageDown') vtNext();
+  if(e.key==='ArrowUp'   || e.key==='PageUp')   vtPrev();
+  if(e.code==='Space'){
+    e.preventDefault();
+    const slide = vtTrack.querySelector(`.vt-slide[data-pos="${vtIndex}"]`);
+    const vid = slide ? slide.querySelector('video') : null;
+    if (vid) { vid.paused ? vid.play().catch(()=>{}) : vid.pause(); }
+  }
+});
+
+/* Bootstrap */
+(function init(){
+  buildTikTokSlides();
+})();
+</script>
+</body>
+</html>
